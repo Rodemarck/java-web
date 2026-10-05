@@ -1,6 +1,7 @@
 package local.redes;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -157,20 +158,15 @@ public class Servidor {
         }
 
     }
-    static void trataConexao(Socket con) throws IOException {
-        var in = new Scanner(con.getInputStream());
+    static void trataConexao(Socket con) throws IOException, ClassNotFoundException {
+        var in = new ObjectInputStream(con.getInputStream());
         var out = new PrintStream(con.getOutputStream());
         var aux = "";
 
         while(true){
-            while (in.hasNextLine()){
-                aux = in.nextLine();
-                System.out.printf("recebendo %s\n",aux);
-
-                if(checaComandos(aux, out, con)){
-                    checaCPF(aux, out, con);
-                }
-            }
+            aux = in.readObject().toString();
+            System.out.printf("recebendo %s\n",aux);
+            out.println("Dados recebidos corretamente!");
         }
     }
 
@@ -178,20 +174,14 @@ public class Servidor {
 
         try(var server = new ServerSocket();) {
             ss = server;
-            ss.bind(new InetSocketAddress("127.0.0.1", 8012));
-            try (var tp = Executors.newCachedThreadPool();) {
-                System.out.println("inicializando servidor");
-                while (true) {
-                    var con = ss.accept();
-                    tp.submit(() -> {
-                        System.out.println("NOVA CONEXÃO!!!!");
-                                try {
-                                    trataConexao(con);
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                    );
+            ss.bind(new InetSocketAddress(Variaveis.URL, Variaveis.PORTA));
+            while (true) {
+                var con = ss.accept();
+                System.out.println("NOVA CONEXÃO!!!!");
+                try {
+                    trataConexao(con);
+                } catch (IOException | ClassNotFoundException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
